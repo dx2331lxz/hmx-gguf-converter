@@ -2209,7 +2209,7 @@ class QwenModel(Model):
         self.gguf_writer.add_file_type(self.ftype)
 
 
-@Model.register("Qwen2ForCausalLM")
+@Model.register("Qwen2ForCausalLM", "Qwen3ForCausalLM")
 class Qwen2Model(Model):
     model_arch = gguf.MODEL_ARCH.QWEN2
 

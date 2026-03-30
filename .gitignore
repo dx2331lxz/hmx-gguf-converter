@@ -21,7 +21,7 @@ env/
 
 # Output files
 *.gguf
-!models/*.gguf
+models/
 
 # HuggingFace models (downloaded by user)
 Qwen*/

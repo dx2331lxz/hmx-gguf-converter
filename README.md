@@ -30,15 +30,15 @@ pip install -r requirements.txt
 
 ### 2. 准备 HuggingFace 模型
 
-从 HuggingFace 下载模型权重文件，例如 Qwen2.5-1.5B：
+从 HuggingFace 下载模型权重文件，例如 Qwen3-4B-Instruct-2507：
 
 ```bash
 # 方式一：使用 huggingface-cli
-huggingface-cli download Qwen/Qwen2.5-1.5B --local-dir ./Qwen2.5-1.5B
+huggingface-cli download Qwen/Qwen3-4B-Instruct-2507 --local-dir ./Qwen3-4B-Instruct-2507
 
 # 方式二：使用 git clone
 git lfs install
-git clone https://huggingface.co/Qwen/Qwen2.5-1.5B
+git clone https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507
 ```
 
 模型目录应包含以下文件：
@@ -51,18 +51,18 @@ git clone https://huggingface.co/Qwen/Qwen2.5-1.5B
 
 ```bash
 python convert_hf_to_gguf_htp.py \
-    --outfile qwen2.5-1.5b.f16-hmx.gguf \
+    --outfile qwen3-4b-instruct-2507.f16-hmx.gguf \
     --outtype f16 \
-    ./Qwen2.5-1.5B
+    ./Qwen3-4B-Instruct-2507
 ```
 
-转换完成后会生成 `qwen2.5-1.5b.f16-hmx.gguf` 文件。
+转换完成后会生成 `qwen3-4b-instruct-2507.f16-hmx.gguf` 文件。
 
 ## 支持的模型
 
 目前已验证支持以下模型系列的 HMX 转换：
 
-- **Qwen / Qwen2 / Qwen2.5**（推荐）
+- **Qwen / Qwen2 / Qwen2.5 / Qwen3**（推荐）
 - **LLaMA / LLaMA 2 / LLaMA 3**（推荐）
 - Mistral / Mixtral
 - Phi / Phi-3
@@ -98,6 +98,12 @@ python convert_hf_to_gguf_htp.py \
 # 基本转换（F16 精度）
 python convert_hf_to_gguf_htp.py --outfile model.f16-hmx.gguf --outtype f16 /path/to/hf_model
 
+# Qwen3-4B-Instruct-2507
+python convert_hf_to_gguf_htp.py \
+    --outfile qwen3-4b-instruct-2507.f16-hmx.gguf \
+    --outtype f16 \
+    ./Qwen3-4B-Instruct-2507
+
 # 仅导出词表
 python convert_hf_to_gguf_htp.py --outfile model.gguf --vocab-only /path/to/hf_model
 
@@ -120,8 +126,8 @@ cmake --build build --target llama-quantize
 
 # 量化（需要设置 REPACK_FOR_HVX 环境变量）
 REPACK_FOR_HVX=1 ./build/bin/llama-quantize \
-    qwen2.5-1.5b.f16-hmx.gguf \
-    qwen2.5-1.5b.iq4_nl+q8_0-hmx.gguf \
+    qwen3-4b-instruct-2507.f16-hmx.gguf \
+    qwen3-4b-instruct-2507.iq4_nl+q8_0-hmx.gguf \
     IQ4_NL+Q8_0
 ```
 
@@ -142,7 +148,7 @@ adb push libhtp_ops_skel.so /data/local/tmp/llama.cpp/
 adb shell
 cd /data/local/tmp/llama.cpp
 LD_LIBRARY_PATH=. DSP_LIBRARY_PATH=. ./llama-cli -t 4 -fa \
-    -m qwen2.5-1.5b.iq4_nl+q8_0-hmx.gguf \
+    -m qwen3-4b-instruct-2507.iq4_nl+q8_0-hmx.gguf \
     -p "Hello my name is"
 ```
 
