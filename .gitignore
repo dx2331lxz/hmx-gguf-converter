@@ -26,6 +26,7 @@ env/
 # HuggingFace model weights: keep tokenizer assets, ignore large weight files
 Qwen*/**
 Llama*/**
+!llama-quantize/**
 Meta-Llama*/**
 mistral*/**
 !*/tokenizer.json

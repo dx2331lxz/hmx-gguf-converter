@@ -10,6 +10,9 @@ hmx-gguf-converter/
 ├── gguf-py/                     # GGUF Python 库（读写 GGUF 格式）
 │   ├── gguf/                    # 核心模块
 │   └── pyproject.toml
+├── llama-quantize/              # 独立量化工具（C++，支持 macOS/Linux）
+│   ├── CMakeLists.txt
+│   └── llama.cpp/               # 内置 llama.cpp 源码（ggml、src、common 等）
 ├── models/                      # 内置 tokenizer 词表文件
 │   ├── ggml-vocab-qwen2.gguf
 │   ├── ggml-vocab-qwen3.gguf
@@ -121,22 +124,29 @@ python convert_hf_to_gguf_htp.py --outfile model.f16-hmx.gguf --outtype f16 --mo
 
 ## 后续量化（可选）
 
-生成 F16-HMX GGUF 后，如果需要进一步量化（如 `IQ4_NL+Q8_0`），需要使用 llama.cpp-npu 项目中编译的 `llama-quantize` 工具：
+生成 F16-HMX GGUF 后，如果需要进一步量化（如 `IQ4_NL+Q8_0`），可以使用本项目自带的 `llama-quantize` 工具。
+
+### 编译量化工具
+
+支持 macOS 和 Linux：
 
 ```bash
-# 在 llama.cpp-npu 项目中编译 llama-quantize
-cd /path/to/llama.cpp-npu
-cmake -B build -DGGML_HTP=ON -DGGML_OPENMP=OFF
-cmake --build build --target llama-quantize
+cd llama-quantize
+cmake -B build
+cmake --build build --config Release
+```
 
+### 执行量化
+
+```bash
 # 量化（需要设置 REPACK_FOR_HVX 环境变量）
-REPACK_FOR_HVX=1 ./build/bin/llama-quantize \
+REPACK_FOR_HVX=1 ./llama-quantize/build/bin/llama-quantize \
     qwen3-4b-instruct-2507.f16-hmx.gguf \
     qwen3-4b-instruct-2507.iq4_nl+q8_0-hmx.gguf \
     IQ4_NL+Q8_0
 ```
 
-> 量化步骤涉及 C/C++ 代码编译，无法独立提取为 Python 脚本。如需量化功能，请使用完整的 llama.cpp-npu 项目。
+更多量化类型和选项请参考 [llama-quantize/README.md](llama-quantize/README.md)。
 
 ## 在设备上运行
 
