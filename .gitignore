@@ -21,10 +21,16 @@ env/
 
 # Output files
 *.gguf
-models/
+!models/ggml-vocab-*.gguf
 
-# HuggingFace models (downloaded by user)
-Qwen*/
-Llama*/
-Meta-Llama*/
-mistral*/
+# HuggingFace model weights: keep tokenizer assets, ignore large weight files
+Qwen*/**
+Llama*/**
+Meta-Llama*/**
+mistral*/**
+!*/tokenizer.json
+!*/tokenizer_config.json
+!*/tokenizer.model
+!*/vocab.json
+!*/merges.txt
+!*/special_tokens_map.json
