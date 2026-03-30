@@ -1,6 +1,6 @@
 # HMX GGUF 模型转换工具
 
-本项目从 [llama.cpp-npu](https://github.com/dx2331lxz/llama.cpp-npu) 提取，用于将 HuggingFace 模型转换为 Hexagon NPU HMX 优化的 GGUF 格式（如 `qwen2.5-1.5b.f16-hmx.gguf`）。
+本项目从 [llama.cpp-npu](https://github.com/dx2331lxz/llama.cpp-npu) 提取，用于将 qwen3 模型转换为 Hexagon NPU HMX 优化的 GGUF 格式。
 
 ## 项目结构
 
@@ -12,6 +12,7 @@ hmx-gguf-converter/
 │   └── pyproject.toml
 ├── models/                      # 内置 tokenizer 词表文件
 │   ├── ggml-vocab-qwen2.gguf
+│   ├── ggml-vocab-qwen3.gguf
 │   ├── ggml-vocab-llama-spm.gguf
 │   ├── ggml-vocab-llama-bpe.gguf
 │   ├── ggml-vocab-gpt-neox.gguf
@@ -19,6 +20,8 @@ hmx-gguf-converter/
 ├── requirements.txt             # Python 依赖
 └── README.md                    # 本文件
 ```
+
+说明：当前仓库已经包含单独的 qwen3 词表文件 [models/ggml-vocab-qwen3.gguf](models/ggml-vocab-qwen3.gguf)。Qwen3 也可以直接从 HuggingFace 模型目录中的 tokenizer 文件导出词表，因此即使没有完整权重，也可以单独生成该文件。
 
 ## 快速开始
 
@@ -46,6 +49,8 @@ git clone https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507
 - `model.safetensors` 或 `pytorch_model.bin` — 模型权重
 - `tokenizer.json` / `tokenizer.model` — 分词器
 - `tokenizer_config.json` — 分词器配置
+
+对于 Qwen3，至少需要保留 tokenizer 相关文件，例如 `tokenizer.json`、`tokenizer_config.json`、`vocab.json`、`merges.txt`。如果需要重新生成内置词表文件，可以使用 `--vocab-only` 导出到 `models/ggml-vocab-qwen3.gguf`。
 
 ### 3. 转换为 F16-HMX GGUF
 

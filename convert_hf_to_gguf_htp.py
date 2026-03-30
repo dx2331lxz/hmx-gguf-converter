@@ -19,10 +19,16 @@ from itertools import chain
 
 import math
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    torch = None
 
 if TYPE_CHECKING:
     from torch import Tensor
+else:
+    Tensor = Any
 
 if 'NO_LOCAL_GGUF' not in os.environ:
     sys.path.insert(1, str(Path(__file__).parent / 'gguf-py'))
@@ -69,6 +75,13 @@ class Model:
     # subclasses should define this!
     model_arch: gguf.MODEL_ARCH
 
+    @staticmethod
+    def require_torch() -> None:
+        if torch is None:
+            raise ModuleNotFoundError(
+                "torch is required for weight conversion; use --vocab-only to export tokenizer assets without torch"
+            )
+
     def __init__(self, dir_model: Path, ftype: gguf.LlamaFileType, fname_out: Path, is_big_endian: bool = False,
                  use_temp_file: bool = False, eager: bool = False,
                  metadata_override: Path | None = None, model_name: str | None = None,
@@ -98,6 +111,7 @@ class Model:
 
         # Apply heuristics to figure out typical tensor encoding based on first layer tensor encoding type
         if self.ftype == gguf.LlamaFileType.GUESSED:
+            self.require_torch()
             # NOTE: can't use field "torch_dtype" in config.json, because some finetunes lie.
             _, first_tensor = next(self.get_tensors())
             if first_tensor.dtype == torch.float16:
@@ -457,6 +471,7 @@ class Model:
         self.gguf_writer.add_quantization_version(gguf.GGML_QUANT_VERSION)
 
     def write(self):
+        self.require_torch()
         self.prepare_tensors()
         self.prepare_metadata(vocab_only=False)
         self.gguf_writer.write_header_to_file(path=self.fname_out)
@@ -2209,9 +2224,28 @@ class QwenModel(Model):
         self.gguf_writer.add_file_type(self.ftype)
 
 
-@Model.register("Qwen2ForCausalLM", "Qwen3ForCausalLM")
+@Model.register("Qwen2ForCausalLM")
 class Qwen2Model(Model):
     model_arch = gguf.MODEL_ARCH.QWEN2
+
+    def set_vocab(self):
+        try:
+            self._set_vocab_sentencepiece()
+        except FileNotFoundError:
+            self._set_vocab_gpt2()
+
+    def set_gguf_parameters(self):
+        super().set_gguf_parameters()
+        if self.hparams.get("rope_scaling") is not None and "factor" in self.hparams["rope_scaling"]:
+            if self.hparams["rope_scaling"].get("type") == "yarn":
+                self.gguf_writer.add_rope_scaling_type(gguf.RopeScalingType.YARN)
+                self.gguf_writer.add_rope_scaling_factor(self.hparams["rope_scaling"]["factor"])
+                self.gguf_writer.add_rope_scaling_orig_ctx_len(self.hparams["rope_scaling"]["original_max_position_embeddings"])
+
+
+@Model.register("Qwen3ForCausalLM")
+class Qwen3Model(Model):
+    model_arch = gguf.MODEL_ARCH.QWEN3
 
     def set_vocab(self):
         try:
@@ -4700,69 +4734,80 @@ class ChameleonModel(Model):
 
 
 # tree of lazy tensors
-class LazyTorchTensor(gguf.LazyBase):
-    _tensor_type = torch.Tensor
-    # to keep the type-checker happy
-    dtype: torch.dtype
-    shape: torch.Size
+if torch is None:
+    class LazyTorchTensor(gguf.LazyBase):
+        _tensor_type = object
 
-    # only used when converting a torch.Tensor to a np.ndarray
-    _dtype_map: dict[torch.dtype, type] = {
-        torch.float16: np.float16,
-        torch.float32: np.float32,
-    }
+        @classmethod
+        def from_safetensors_slice(cls, st_slice: Any) -> Tensor:
+            del cls, st_slice
+            Model.require_torch()
+            raise AssertionError("unreachable")
 
-    # used for safetensors slices
-    # ref: https://github.com/huggingface/safetensors/blob/079781fd0dc455ba0fe851e2b4507c33d0c0d407/bindings/python/src/lib.rs#L1046
-    # TODO: uncomment U64, U32, and U16, ref: https://github.com/pytorch/pytorch/issues/58734
-    _dtype_str_map: dict[str, torch.dtype] = {
-        "F64": torch.float64,
-        "F32": torch.float32,
-        "BF16": torch.bfloat16,
-        "F16": torch.float16,
-        # "U64": torch.uint64,
-        "I64": torch.int64,
-        # "U32": torch.uint32,
-        "I32": torch.int32,
-        # "U16": torch.uint16,
-        "I16": torch.int16,
-        "U8": torch.uint8,
-        "I8": torch.int8,
-        "BOOL": torch.bool,
-        "F8_E4M3": torch.float8_e4m3fn,
-        "F8_E5M2": torch.float8_e5m2,
-    }
+else:
+    class LazyTorchTensor(gguf.LazyBase):
+        _tensor_type = torch.Tensor
+        # to keep the type-checker happy
+        dtype: torch.dtype
+        shape: torch.Size
 
-    def numpy(self) -> gguf.LazyNumpyTensor:
-        dtype = self._dtype_map[self.dtype]
-        return gguf.LazyNumpyTensor(
-            meta=gguf.LazyNumpyTensor.meta_with_dtype_and_shape(dtype, self.shape),
-            args=(self,),
-            func=(lambda s: s.numpy())
-        )
+        # only used when converting a torch.Tensor to a np.ndarray
+        _dtype_map: dict[torch.dtype, type] = {
+            torch.float16: np.float16,
+            torch.float32: np.float32,
+        }
 
-    @classmethod
-    def meta_with_dtype_and_shape(cls, dtype: torch.dtype, shape: tuple[int, ...]) -> Tensor:
-        return torch.empty(size=shape, dtype=dtype, device="meta")
+        # used for safetensors slices
+        # ref: https://github.com/huggingface/safetensors/blob/079781fd0dc455ba0fe851e2b4507c33d0c0d407/bindings/python/src/lib.rs#L1046
+        # TODO: uncomment U64, U32, and U16, ref: https://github.com/pytorch/pytorch/issues/58734
+        _dtype_str_map: dict[str, torch.dtype] = {
+            "F64": torch.float64,
+            "F32": torch.float32,
+            "BF16": torch.bfloat16,
+            "F16": torch.float16,
+            # "U64": torch.uint64,
+            "I64": torch.int64,
+            # "U32": torch.uint32,
+            "I32": torch.int32,
+            # "U16": torch.uint16,
+            "I16": torch.int16,
+            "U8": torch.uint8,
+            "I8": torch.int8,
+            "BOOL": torch.bool,
+            "F8_E4M3": torch.float8_e4m3fn,
+            "F8_E5M2": torch.float8_e5m2,
+        }
 
-    @classmethod
-    def from_safetensors_slice(cls, st_slice: Any) -> Tensor:
-        dtype = cls._dtype_str_map[st_slice.get_dtype()]
-        shape: tuple[int, ...] = tuple(st_slice.get_shape())
-        lazy = cls(meta=cls.meta_with_dtype_and_shape(dtype, shape), args=(st_slice,), func=lambda s: s[:])
-        return cast(torch.Tensor, lazy)
+        def numpy(self) -> gguf.LazyNumpyTensor:
+            dtype = self._dtype_map[self.dtype]
+            return gguf.LazyNumpyTensor(
+                meta=gguf.LazyNumpyTensor.meta_with_dtype_and_shape(dtype, self.shape),
+                args=(self,),
+                func=(lambda s: s.numpy())
+            )
 
-    @classmethod
-    def __torch_function__(cls, func, types, args=(), kwargs=None):
-        del types  # unused
+        @classmethod
+        def meta_with_dtype_and_shape(cls, dtype: torch.dtype, shape: tuple[int, ...]) -> Tensor:
+            return torch.empty(size=shape, dtype=dtype, device="meta")
 
-        if kwargs is None:
-            kwargs = {}
+        @classmethod
+        def from_safetensors_slice(cls, st_slice: Any) -> Tensor:
+            dtype = cls._dtype_str_map[st_slice.get_dtype()]
+            shape: tuple[int, ...] = tuple(st_slice.get_shape())
+            lazy = cls(meta=cls.meta_with_dtype_and_shape(dtype, shape), args=(st_slice,), func=lambda s: s[:])
+            return cast(torch.Tensor, lazy)
 
-        if func is torch.Tensor.numpy:
-            return args[0].numpy()
+        @classmethod
+        def __torch_function__(cls, func, types, args=(), kwargs=None):
+            del types  # unused
 
-        return cls._wrap_fn(func)(*args, **kwargs)
+            if kwargs is None:
+                kwargs = {}
+
+            if func is torch.Tensor.numpy:
+                return args[0].numpy()
+
+            return cls._wrap_fn(func)(*args, **kwargs)
 
 
 def parse_args() -> argparse.Namespace:
@@ -4884,7 +4929,9 @@ def main() -> None:
 
     hparams = Model.load_hparams(dir_model)
 
-    with torch.inference_mode():
+    torch_context = torch.inference_mode() if torch is not None else contextlib.nullcontext()
+
+    with torch_context:
         output_type = ftype_map[args.outtype]
         model_architecture = hparams["architectures"][0]
 

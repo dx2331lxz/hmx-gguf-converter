@@ -238,6 +238,7 @@ class MODEL_ARCH(IntEnum):
     STABLELM         = auto()
     QWEN             = auto()
     QWEN2            = auto()
+    QWEN3            = auto()
     QWEN2MOE         = auto()
     QWEN2VL          = auto()
     PHI2             = auto()
@@ -420,6 +421,7 @@ MODEL_ARCH_NAMES: dict[MODEL_ARCH, str] = {
     MODEL_ARCH.STABLELM:         "stablelm",
     MODEL_ARCH.QWEN:             "qwen",
     MODEL_ARCH.QWEN2:            "qwen2",
+    MODEL_ARCH.QWEN3:            "qwen3",
     MODEL_ARCH.QWEN2MOE:         "qwen2moe",
     MODEL_ARCH.QWEN2VL:          "qwen2vl",
     MODEL_ARCH.PHI2:             "phi2",
@@ -839,6 +841,23 @@ MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {
         MODEL_TENSOR.ATTN_K,
         MODEL_TENSOR.ATTN_V,
         MODEL_TENSOR.ATTN_OUT,
+        MODEL_TENSOR.FFN_NORM,
+        MODEL_TENSOR.FFN_GATE,
+        MODEL_TENSOR.FFN_DOWN,
+        MODEL_TENSOR.FFN_UP,
+    ],
+    MODEL_ARCH.QWEN3: [
+        MODEL_TENSOR.TOKEN_EMBD,
+        MODEL_TENSOR.OUTPUT_NORM,
+        MODEL_TENSOR.OUTPUT,
+        MODEL_TENSOR.ROPE_FREQS,
+        MODEL_TENSOR.ATTN_NORM,
+        MODEL_TENSOR.ATTN_Q,
+        MODEL_TENSOR.ATTN_K,
+        MODEL_TENSOR.ATTN_V,
+        MODEL_TENSOR.ATTN_OUT,
+        MODEL_TENSOR.ATTN_Q_NORM,
+        MODEL_TENSOR.ATTN_K_NORM,
         MODEL_TENSOR.FFN_NORM,
         MODEL_TENSOR.FFN_GATE,
         MODEL_TENSOR.FFN_DOWN,
