@@ -251,6 +251,7 @@ class MODEL_ARCH(IntEnum):
     MINICPM3         = auto()
     GEMMA            = auto()
     GEMMA2           = auto()
+    GEMMA4           = auto()
     STARCODER2       = auto()
     RWKV6            = auto()
     MAMBA            = auto()
@@ -400,6 +401,31 @@ class MODEL_TENSOR(IntEnum):
     POSNET_ATTN_K        = auto()
     POSNET_ATTN_V        = auto()
     POSNET_ATTN_OUT      = auto()
+    # Vision encoder tensors (Gemma4)
+    V_PATCH_EMBD         = auto()  # vision patch embedding projection
+    V_PATCH_EMBD_POS     = auto()  # vision position embedding table
+    V_ENC_ATTN_NORM      = auto()  # vision encoder input layernorm
+    V_ENC_ATTN_Q         = auto()
+    V_ENC_ATTN_K         = auto()
+    V_ENC_ATTN_V         = auto()
+    V_ENC_ATTN_OUT       = auto()
+    V_ENC_ATTN_Q_NORM    = auto()
+    V_ENC_ATTN_K_NORM    = auto()
+    V_ENC_ATTN_POST_NORM = auto()  # post attention layernorm
+    V_ENC_FFN_PRE_NORM   = auto()  # pre feedforward layernorm
+    V_ENC_FFN_POST_NORM  = auto()  # post feedforward layernorm
+    V_ENC_FFN_GATE       = auto()
+    V_ENC_FFN_DOWN       = auto()
+    V_ENC_FFN_UP         = auto()
+    V_ENC_OUTPUT_PROJ    = auto()  # vision-to-LM projection (embed_vision)
+    # Per-layer embedding tensors (Gemma4)
+    PER_LAYER_TOKEN_EMBD = auto()  # per-layer token embedding table
+    PER_LAYER_SCALAR     = auto()  # per-layer scalar gate
+    PER_LAYER_INPUT_GATE = auto()  # per-layer input gate projection
+    PER_LAYER_PROJ       = auto()  # per-layer projection back to hidden
+    PER_LAYER_POST_NORM  = auto()  # per-layer post norm
+    PER_LAYER_MODEL_PROJ = auto()  # global per-layer model projection [n_layer*256, n_embd]
+    PER_LAYER_PROJ_NORM  = auto()  # global per-layer projection norm [256]
 
 
 MODEL_ARCH_NAMES: dict[MODEL_ARCH, str] = {
@@ -434,6 +460,7 @@ MODEL_ARCH_NAMES: dict[MODEL_ARCH, str] = {
     MODEL_ARCH.MINICPM3:         "minicpm3",
     MODEL_ARCH.GEMMA:            "gemma",
     MODEL_ARCH.GEMMA2:           "gemma2",
+    MODEL_ARCH.GEMMA4:           "gemma4",
     MODEL_ARCH.STARCODER2:       "starcoder2",
     MODEL_ARCH.RWKV6:            "rwkv6",
     MODEL_ARCH.MAMBA:            "mamba",
@@ -583,6 +610,31 @@ TENSOR_NAMES: dict[MODEL_TENSOR, str] = {
     MODEL_TENSOR.POSNET_ATTN_K:             "posnet.{bid}.attn_k",
     MODEL_TENSOR.POSNET_ATTN_V:             "posnet.{bid}.attn_v",
     MODEL_TENSOR.POSNET_ATTN_OUT:           "posnet.{bid}.attn_output",
+    # Vision encoder tensors
+    MODEL_TENSOR.V_PATCH_EMBD:              "v.patch_embd",
+    MODEL_TENSOR.V_PATCH_EMBD_POS:          "v.patch_embd_pos",
+    MODEL_TENSOR.V_ENC_ATTN_NORM:           "v.blk.{bid}.attn_norm",
+    MODEL_TENSOR.V_ENC_ATTN_Q:              "v.blk.{bid}.attn_q",
+    MODEL_TENSOR.V_ENC_ATTN_K:              "v.blk.{bid}.attn_k",
+    MODEL_TENSOR.V_ENC_ATTN_V:              "v.blk.{bid}.attn_v",
+    MODEL_TENSOR.V_ENC_ATTN_OUT:            "v.blk.{bid}.attn_output",
+    MODEL_TENSOR.V_ENC_ATTN_Q_NORM:         "v.blk.{bid}.attn_q_norm",
+    MODEL_TENSOR.V_ENC_ATTN_K_NORM:         "v.blk.{bid}.attn_k_norm",
+    MODEL_TENSOR.V_ENC_ATTN_POST_NORM:      "v.blk.{bid}.post_attn_norm",
+    MODEL_TENSOR.V_ENC_FFN_PRE_NORM:        "v.blk.{bid}.ffn_pre_norm",
+    MODEL_TENSOR.V_ENC_FFN_POST_NORM:       "v.blk.{bid}.ffn_post_norm",
+    MODEL_TENSOR.V_ENC_FFN_GATE:            "v.blk.{bid}.ffn_gate",
+    MODEL_TENSOR.V_ENC_FFN_DOWN:            "v.blk.{bid}.ffn_down",
+    MODEL_TENSOR.V_ENC_FFN_UP:              "v.blk.{bid}.ffn_up",
+    MODEL_TENSOR.V_ENC_OUTPUT_PROJ:         "v.output_proj",
+    # Per-layer embedding tensors
+    MODEL_TENSOR.PER_LAYER_TOKEN_EMBD:      "per_layer_token_embd",
+    MODEL_TENSOR.PER_LAYER_SCALAR:          "blk.{bid}.per_layer_scalar",
+    MODEL_TENSOR.PER_LAYER_INPUT_GATE:      "blk.{bid}.per_layer_input_gate",
+    MODEL_TENSOR.PER_LAYER_PROJ:            "blk.{bid}.per_layer_proj",
+    MODEL_TENSOR.PER_LAYER_POST_NORM:       "blk.{bid}.per_layer_post_norm",
+    MODEL_TENSOR.PER_LAYER_MODEL_PROJ:       "per_layer_model_proj",
+    MODEL_TENSOR.PER_LAYER_PROJ_NORM:        "per_layer_proj_norm",
 }
 
 MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {
@@ -1065,6 +1117,48 @@ MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {
         MODEL_TENSOR.ATTN_POST_NORM,
         MODEL_TENSOR.FFN_PRE_NORM,
         MODEL_TENSOR.FFN_POST_NORM,
+    ],
+    MODEL_ARCH.GEMMA4: [
+        MODEL_TENSOR.TOKEN_EMBD,
+        MODEL_TENSOR.OUTPUT_NORM,
+        MODEL_TENSOR.ATTN_Q,
+        MODEL_TENSOR.ATTN_K,
+        MODEL_TENSOR.ATTN_V,
+        MODEL_TENSOR.ATTN_OUT,
+        MODEL_TENSOR.ATTN_Q_NORM,
+        MODEL_TENSOR.ATTN_K_NORM,
+        MODEL_TENSOR.FFN_GATE,
+        MODEL_TENSOR.FFN_DOWN,
+        MODEL_TENSOR.FFN_UP,
+        MODEL_TENSOR.ATTN_NORM,
+        MODEL_TENSOR.ATTN_POST_NORM,
+        MODEL_TENSOR.FFN_PRE_NORM,
+        MODEL_TENSOR.FFN_POST_NORM,
+        # Vision encoder
+        MODEL_TENSOR.V_PATCH_EMBD,
+        MODEL_TENSOR.V_PATCH_EMBD_POS,
+        MODEL_TENSOR.V_ENC_ATTN_NORM,
+        MODEL_TENSOR.V_ENC_ATTN_Q,
+        MODEL_TENSOR.V_ENC_ATTN_K,
+        MODEL_TENSOR.V_ENC_ATTN_V,
+        MODEL_TENSOR.V_ENC_ATTN_OUT,
+        MODEL_TENSOR.V_ENC_ATTN_Q_NORM,
+        MODEL_TENSOR.V_ENC_ATTN_K_NORM,
+        MODEL_TENSOR.V_ENC_ATTN_POST_NORM,
+        MODEL_TENSOR.V_ENC_FFN_PRE_NORM,
+        MODEL_TENSOR.V_ENC_FFN_POST_NORM,
+        MODEL_TENSOR.V_ENC_FFN_GATE,
+        MODEL_TENSOR.V_ENC_FFN_DOWN,
+        MODEL_TENSOR.V_ENC_FFN_UP,
+        MODEL_TENSOR.V_ENC_OUTPUT_PROJ,
+        # Per-layer embeddings
+        MODEL_TENSOR.PER_LAYER_TOKEN_EMBD,
+        MODEL_TENSOR.PER_LAYER_SCALAR,
+        MODEL_TENSOR.PER_LAYER_INPUT_GATE,
+        MODEL_TENSOR.PER_LAYER_PROJ,
+        MODEL_TENSOR.PER_LAYER_POST_NORM,
+        MODEL_TENSOR.PER_LAYER_MODEL_PROJ,
+        MODEL_TENSOR.PER_LAYER_PROJ_NORM,
     ],
     MODEL_ARCH.STARCODER2: [
         MODEL_TENSOR.TOKEN_EMBD,

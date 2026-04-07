@@ -21,6 +21,7 @@ class TensorNameMap:
             "transformer.embd.wte",                      # phi2
             "model.tok_embeddings",                      # internlm2
             "model.embedding",                           # mamba-qbert
+            "model.language_model.embed_tokens",          # gemma4
             "backbone.embedding",                        # mamba
             "backbone.embeddings",                       # mamba-hf
             "transformer.in_out_embed",                  # Grok
@@ -83,6 +84,7 @@ class TensorNameMap:
             "model.norm",                              # nemotron
             "rwkv.ln_out",                             # rwkv
             "backbone.final_layer_norm",               # wavtokenizer
+            "model.language_model.norm",               # gemma4
         ),
 
         # Rope frequencies
@@ -123,6 +125,7 @@ class TensorNameMap:
             "encoder.layers.{bid}.input_layernorm",                 # chatglm
             "transformer.layers.{bid}.attn_norm",                   # openelm
             "rwkv.blocks.{bid}.ln1",                                # rwkv
+            "model.language_model.layers.{bid}.input_layernorm",    # gemma4
         ),
 
         # Attention norm 2
@@ -161,6 +164,7 @@ class TensorNameMap:
             "model.layers.{bid}.attention.wq",                           # internlm2
             "transformer.decoder_layer.{bid}.multi_head_attention.query",# Grok
             "transformer.h.{bid}.attn.attention.q_proj",                 # exaone
+            "model.language_model.layers.{bid}.self_attn.q_proj",        # gemma4
         ),
 
         # Attention key
@@ -175,6 +179,7 @@ class TensorNameMap:
             "model.layers.{bid}.attention.wk",                         # internlm2
             "transformer.decoder_layer.{bid}.multi_head_attention.key",# Grok
             "transformer.h.{bid}.attn.attention.k_proj",               # exaone
+            "model.language_model.layers.{bid}.self_attn.k_proj",      # gemma4
         ),
 
         # Attention value
@@ -188,6 +193,7 @@ class TensorNameMap:
             "model.layers.{bid}.attention.wv",                           # internlm2
             "transformer.decoder_layer.{bid}.multi_head_attention.value",# Grok
             "transformer.h.{bid}.attn.attention.v_proj",                 # exaone
+            "model.language_model.layers.{bid}.self_attn.v_proj",        # gemma4
         ),
 
         # Attention output
@@ -214,6 +220,7 @@ class TensorNameMap:
             "encoder.layers.{bid}.self_attention.dense",                    # chatglm
             "transformer.layers.{bid}.attn.out_proj",                       # openelm
             "transformer.h.{bid}.attn.attention.out_proj",                  # exaone
+            "model.language_model.layers.{bid}.self_attn.o_proj",             # gemma4
         ),
 
         # Attention output norm
@@ -225,7 +232,8 @@ class TensorNameMap:
         ),
 
         MODEL_TENSOR.ATTN_POST_NORM: (
-            "model.layers.{bid}.post_attention_layernorm",     # gemma2 olmo2
+            "model.layers.{bid}.post_attention_layernorm",                  # gemma2 olmo2
+            "model.language_model.layers.{bid}.post_attention_layernorm",   # gemma4
         ),
 
         # Rotary embeddings
@@ -255,12 +263,14 @@ class TensorNameMap:
 
         # Post feed-forward norm
         MODEL_TENSOR.FFN_PRE_NORM: (
-            "model.layers.{bid}.pre_feedforward_layernorm", # gemma2
+            "model.layers.{bid}.pre_feedforward_layernorm",                 # gemma2
+            "model.language_model.layers.{bid}.pre_feedforward_layernorm",  # gemma4
         ),
 
         # Post feed-forward norm
         MODEL_TENSOR.FFN_POST_NORM: (
-            "model.layers.{bid}.post_feedforward_layernorm", # gemma2 olmo2
+            "model.layers.{bid}.post_feedforward_layernorm",                 # gemma2 olmo2
+            "model.language_model.layers.{bid}.post_feedforward_layernorm",  # gemma4
         ),
 
         MODEL_TENSOR.FFN_GATE_INP: (
@@ -303,6 +313,7 @@ class TensorNameMap:
             "model.layers.{bid}.residual_mlp.w3",                     # arctic
             "encoder.layers.{bid}.mlp.dense_h_to_4h",                 # chatglm
             "transformer.h.{bid}.mlp.c_fc_1",                         # exaone
+            "model.language_model.layers.{bid}.mlp.up_proj",           # gemma4
         ),
 
         MODEL_TENSOR.FFN_UP_EXP: (
@@ -335,6 +346,7 @@ class TensorNameMap:
             "transformer.h.{bid}.mlp.linear_1",           # refact
             "model.layers.{bid}.residual_mlp.w1",         # arctic
             "transformer.h.{bid}.mlp.c_fc_0",             # exaone
+            "model.language_model.layers.{bid}.mlp.gate_proj",    # gemma4
         ),
 
         MODEL_TENSOR.FFN_GATE_EXP: (
@@ -375,6 +387,7 @@ class TensorNameMap:
             "encoder.layer.{bid}.mlp.down_layer",                     # jina-bert-v2
             "encoder.layers.{bid}.mlp.dense_4h_to_h",                 # chatglm
             "model.layers.h.{bid}.mlp.c_proj",                        # exaone
+            "model.language_model.layers.{bid}.mlp.down_proj",         # gemma4
         ),
 
         MODEL_TENSOR.FFN_DOWN_EXP: (
@@ -397,6 +410,7 @@ class TensorNameMap:
             "transformer.blocks.{bid}.attn.q_ln",                             # sea-lion
             "encoder.layer.{bid}.attention.self.layer_norm_q",                # jina-bert-v2
             "transformer.layers.{bid}.attn.q_norm",                           # openelm
+            "model.language_model.layers.{bid}.self_attn.q_norm",              # gemma4
         ),
 
         MODEL_TENSOR.ATTN_K_NORM: (
@@ -406,6 +420,7 @@ class TensorNameMap:
             "transformer.blocks.{bid}.attn.k_ln",                             # sea-lion
             "encoder.layer.{bid}.attention.self.layer_norm_k",                # jina-bert-v2
             "transformer.layers.{bid}.attn.k_norm",                           # openelm
+            "model.language_model.layers.{bid}.self_attn.k_norm",              # gemma4
         ),
 
         MODEL_TENSOR.ROPE_FREQS: (
@@ -763,6 +778,100 @@ class TensorNameMap:
 
         MODEL_TENSOR.POSNET_ATTN_OUT: (
             "backbone.posnet.{bid}.proj_out", # wavtokenizer
+        ),
+
+        # Gemma4 vision encoder tensors
+        MODEL_TENSOR.V_PATCH_EMBD: (
+            "model.vision_tower.patch_embedder.input_proj",              # gemma4
+        ),
+
+        MODEL_TENSOR.V_PATCH_EMBD_POS: (
+            "model.vision_tower.patch_embedder.position_embedding_table", # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_NORM: (
+            "model.vision_tower.encoder.layers.{bid}.input_layernorm",    # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_Q: (
+            "model.vision_tower.encoder.layers.{bid}.self_attn.q_proj",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_K: (
+            "model.vision_tower.encoder.layers.{bid}.self_attn.k_proj",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_V: (
+            "model.vision_tower.encoder.layers.{bid}.self_attn.v_proj",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_OUT: (
+            "model.vision_tower.encoder.layers.{bid}.self_attn.o_proj",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_Q_NORM: (
+            "model.vision_tower.encoder.layers.{bid}.self_attn.q_norm",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_K_NORM: (
+            "model.vision_tower.encoder.layers.{bid}.self_attn.k_norm",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_ATTN_POST_NORM: (
+            "model.vision_tower.encoder.layers.{bid}.post_attention_layernorm",    # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_FFN_PRE_NORM: (
+            "model.vision_tower.encoder.layers.{bid}.pre_feedforward_layernorm",   # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_FFN_POST_NORM: (
+            "model.vision_tower.encoder.layers.{bid}.post_feedforward_layernorm",  # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_FFN_GATE: (
+            "model.vision_tower.encoder.layers.{bid}.mlp.gate_proj",      # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_FFN_DOWN: (
+            "model.vision_tower.encoder.layers.{bid}.mlp.down_proj",      # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_FFN_UP: (
+            "model.vision_tower.encoder.layers.{bid}.mlp.up_proj",        # gemma4
+        ),
+
+        MODEL_TENSOR.V_ENC_OUTPUT_PROJ: (
+            "model.embed_vision.embedding_projection",                    # gemma4
+        ),
+
+        # Gemma4 per-layer embedding tensors
+        MODEL_TENSOR.PER_LAYER_TOKEN_EMBD: (
+            "model.language_model.embed_tokens_per_layer",                # gemma4
+        ),
+
+        MODEL_TENSOR.PER_LAYER_SCALAR: (
+            "model.language_model.layers.{bid}.layer_scalar",             # gemma4
+        ),
+
+        MODEL_TENSOR.PER_LAYER_INPUT_GATE: (
+            "model.language_model.layers.{bid}.per_layer_input_gate",     # gemma4
+        ),
+
+        MODEL_TENSOR.PER_LAYER_PROJ: (
+            "model.language_model.layers.{bid}.per_layer_projection",     # gemma4
+        ),
+
+        MODEL_TENSOR.PER_LAYER_POST_NORM: (
+            "model.language_model.layers.{bid}.post_per_layer_input_norm", # gemma4
+        ),
+
+        MODEL_TENSOR.PER_LAYER_MODEL_PROJ: (
+            "model.language_model.per_layer_model_projection",  # gemma4
+        ),
+
+        MODEL_TENSOR.PER_LAYER_PROJ_NORM: (
+            "model.language_model.per_layer_projection_norm",   # gemma4
         ),
     }
 

@@ -177,6 +177,7 @@ enum llm_arch {
     LLM_ARCH_MINICPM3,
     LLM_ARCH_GEMMA,
     LLM_ARCH_GEMMA2,
+    LLM_ARCH_GEMMA4,
     LLM_ARCH_STARCODER2,
     LLM_ARCH_MAMBA,
     LLM_ARCH_XVERSE,
@@ -236,6 +237,7 @@ static const std::map<llm_arch, const char *> LLM_ARCH_NAMES = {
     { LLM_ARCH_MINICPM3,         "minicpm3"         },
     { LLM_ARCH_GEMMA,            "gemma"            },
     { LLM_ARCH_GEMMA2,           "gemma2"           },
+    { LLM_ARCH_GEMMA4,            "gemma4"            },
     { LLM_ARCH_STARCODER2,       "starcoder2"       },
     { LLM_ARCH_MAMBA,            "mamba"            },
     { LLM_ARCH_XVERSE,           "xverse"           },
@@ -650,6 +652,31 @@ enum llm_tensor {
     LLM_TENSOR_POS_NET_ATTN_K,
     LLM_TENSOR_POS_NET_ATTN_V,
     LLM_TENSOR_POS_NET_ATTN_OUT,
+    // vision encoder tensors
+    LLM_TENSOR_V_PATCH_EMBD,
+    LLM_TENSOR_V_PATCH_EMBD_POS,
+    LLM_TENSOR_V_ENC_ATTN_NORM,
+    LLM_TENSOR_V_ENC_ATTN_Q,
+    LLM_TENSOR_V_ENC_ATTN_K,
+    LLM_TENSOR_V_ENC_ATTN_V,
+    LLM_TENSOR_V_ENC_ATTN_OUT,
+    LLM_TENSOR_V_ENC_ATTN_Q_NORM,
+    LLM_TENSOR_V_ENC_ATTN_K_NORM,
+    LLM_TENSOR_V_ENC_ATTN_POST_NORM,
+    LLM_TENSOR_V_ENC_FFN_PRE_NORM,
+    LLM_TENSOR_V_ENC_FFN_POST_NORM,
+    LLM_TENSOR_V_ENC_FFN_GATE,
+    LLM_TENSOR_V_ENC_FFN_DOWN,
+    LLM_TENSOR_V_ENC_FFN_UP,
+    LLM_TENSOR_V_ENC_OUTPUT_PROJ,
+    // per-layer multimodal tensors
+    LLM_TENSOR_PER_LAYER_TOKEN_EMBD,
+    LLM_TENSOR_PER_LAYER_SCALAR,
+    LLM_TENSOR_PER_LAYER_INPUT_GATE,
+    LLM_TENSOR_PER_LAYER_PROJ,
+    LLM_TENSOR_PER_LAYER_POST_NORM,
+    LLM_TENSOR_PER_LAYER_MODEL_PROJ,
+    LLM_TENSOR_PER_LAYER_PROJ_NORM,
 };
 
 static const std::map<llm_arch, std::map<llm_tensor, const char *>> LLM_TENSOR_NAMES = {
@@ -1216,6 +1243,51 @@ static const std::map<llm_arch, std::map<llm_tensor, const char *>> LLM_TENSOR_N
             { LLM_TENSOR_FFN_DOWN,        "blk.%d.ffn_down" },
             { LLM_TENSOR_FFN_UP,          "blk.%d.ffn_up" },
             { LLM_TENSOR_FFN_POST_NORM,   "blk.%d.post_ffw_norm" },
+        },
+    },
+    {
+        LLM_ARCH_GEMMA4,
+        {
+            { LLM_TENSOR_TOKEN_EMBD,      "token_embd" },
+            { LLM_TENSOR_OUTPUT_NORM,     "output_norm" },
+            { LLM_TENSOR_ATTN_NORM,       "blk.%d.attn_norm" },
+            { LLM_TENSOR_ATTN_Q,          "blk.%d.attn_q" },
+            { LLM_TENSOR_ATTN_K,          "blk.%d.attn_k" },
+            { LLM_TENSOR_ATTN_V,          "blk.%d.attn_v" },
+            { LLM_TENSOR_ATTN_OUT,        "blk.%d.attn_output" },
+            { LLM_TENSOR_ATTN_POST_NORM,  "blk.%d.post_attention_norm" },
+            { LLM_TENSOR_ATTN_Q_NORM,     "blk.%d.attn_q_norm" },
+            { LLM_TENSOR_ATTN_K_NORM,     "blk.%d.attn_k_norm" },
+            { LLM_TENSOR_FFN_NORM,        "blk.%d.ffn_norm" },
+            { LLM_TENSOR_FFN_GATE,        "blk.%d.ffn_gate" },
+            { LLM_TENSOR_FFN_DOWN,        "blk.%d.ffn_down" },
+            { LLM_TENSOR_FFN_UP,          "blk.%d.ffn_up" },
+            { LLM_TENSOR_FFN_POST_NORM,   "blk.%d.post_ffw_norm" },
+            // vision encoder
+            { LLM_TENSOR_V_PATCH_EMBD,          "v.patch_embd" },
+            { LLM_TENSOR_V_PATCH_EMBD_POS,      "v.patch_embd_pos" },
+            { LLM_TENSOR_V_ENC_ATTN_NORM,       "v.blk.%d.attn_norm" },
+            { LLM_TENSOR_V_ENC_ATTN_Q,          "v.blk.%d.attn_q" },
+            { LLM_TENSOR_V_ENC_ATTN_K,          "v.blk.%d.attn_k" },
+            { LLM_TENSOR_V_ENC_ATTN_V,          "v.blk.%d.attn_v" },
+            { LLM_TENSOR_V_ENC_ATTN_OUT,        "v.blk.%d.attn_output" },
+            { LLM_TENSOR_V_ENC_ATTN_Q_NORM,     "v.blk.%d.attn_q_norm" },
+            { LLM_TENSOR_V_ENC_ATTN_K_NORM,     "v.blk.%d.attn_k_norm" },
+            { LLM_TENSOR_V_ENC_ATTN_POST_NORM,  "v.blk.%d.post_attention_norm" },
+            { LLM_TENSOR_V_ENC_FFN_PRE_NORM,    "v.blk.%d.ffn_pre_norm" },
+            { LLM_TENSOR_V_ENC_FFN_POST_NORM,   "v.blk.%d.ffn_post_norm" },
+            { LLM_TENSOR_V_ENC_FFN_GATE,        "v.blk.%d.ffn_gate" },
+            { LLM_TENSOR_V_ENC_FFN_DOWN,        "v.blk.%d.ffn_down" },
+            { LLM_TENSOR_V_ENC_FFN_UP,          "v.blk.%d.ffn_up" },
+            { LLM_TENSOR_V_ENC_OUTPUT_PROJ,      "v.output_proj" },
+            // per-layer multimodal
+            { LLM_TENSOR_PER_LAYER_TOKEN_EMBD,  "per_layer_token_embd" },
+            { LLM_TENSOR_PER_LAYER_SCALAR,      "blk.%d.per_layer_scalar" },
+            { LLM_TENSOR_PER_LAYER_INPUT_GATE,  "blk.%d.per_layer_input_gate" },
+            { LLM_TENSOR_PER_LAYER_PROJ,        "blk.%d.per_layer_proj" },
+            { LLM_TENSOR_PER_LAYER_POST_NORM,   "blk.%d.per_layer_post_norm" },
+            { LLM_TENSOR_PER_LAYER_MODEL_PROJ,   "per_layer_model_proj" },
+            { LLM_TENSOR_PER_LAYER_PROJ_NORM,    "per_layer_proj_norm" },
         },
     },
     {
@@ -2995,6 +3067,12 @@ struct llama_layer {
     struct llama_layer_posnet posnet;
 
     struct llama_layer_convnext convnext;
+
+    // per-layer multimodal (gemma4)
+    struct ggml_tensor * per_layer_scalar    = nullptr;
+    struct ggml_tensor * per_layer_inp_gate  = nullptr;
+    struct ggml_tensor * per_layer_proj      = nullptr;
+    struct ggml_tensor * per_layer_post_norm = nullptr;
 };
 
 // very similar to llama_batch,
@@ -6122,6 +6200,18 @@ static void llm_load_hparams(
                     default: model.type = e_model::MODEL_UNKNOWN;
                }
             } break;
+        case LLM_ARCH_GEMMA4:
+            {
+                hparams.n_swa = 512; // default value of gemma 4
+                ml.get_key(LLM_KV_ATTENTION_SLIDING_WINDOW, hparams.n_swa, false);
+                ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);
+                ml.get_key(LLM_KV_FINAL_LOGIT_SOFTCAPPING, hparams.f_final_logit_softcapping, false);
+
+                switch (hparams.n_layer) {
+                    case 42: model.type = e_model::MODEL_4B; break;
+                    default: model.type = e_model::MODEL_UNKNOWN;
+               }
+            } break;
         case LLM_ARCH_STARCODER2:
             {
                 ml.get_key(LLM_KV_ATTENTION_LAYERNORM_EPS, hparams.f_norm_eps);
@@ -8869,6 +8959,69 @@ static bool llm_load_tensors(
                         layer.ffn_up   = create_tensor(tn(LLM_TENSOR_FFN_UP,   "weight", i), {n_embd,   n_ff}, 0);
                         layer.ffn_down = create_tensor(tn(LLM_TENSOR_FFN_DOWN, "weight", i), {  n_ff, n_embd}, 0);
                         layer.ffn_post_norm = create_tensor(tn(LLM_TENSOR_FFN_POST_NORM, "weight", i), {n_embd}, 0);
+                    }
+                } break;
+            case LLM_ARCH_GEMMA4:
+                {
+                    model.tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, "weight"), {n_embd, n_vocab}, 0);
+
+                    // output
+                    model.output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, "weight"), {n_embd}, 0);
+                    model.output      = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD,  "weight"), {n_embd, n_vocab}, llama_model_loader::TENSOR_DUPLICATED);
+
+                    for (int i = 0; i < n_layer; ++i) {
+                        auto & layer = model.layers[i];
+
+                        layer.attn_norm = create_tensor(tn(LLM_TENSOR_ATTN_NORM, "weight", i), {n_embd}, 0);
+
+                        layer.wq = create_tensor(tn(LLM_TENSOR_ATTN_Q,   "weight", i), {n_embd, n_embd_head_k * n_head}, 0);
+                        layer.wk = create_tensor(tn(LLM_TENSOR_ATTN_K,   "weight", i), {n_embd, n_embd_k_gqa}, 0);
+                        layer.wv = create_tensor(tn(LLM_TENSOR_ATTN_V,   "weight", i), {n_embd, n_embd_v_gqa}, 0);
+                        layer.wo = create_tensor(tn(LLM_TENSOR_ATTN_OUT, "weight", i), {n_embd_head_k * n_head, n_embd}, 0);
+                        layer.attn_post_norm = create_tensor(tn(LLM_TENSOR_ATTN_POST_NORM, "weight", i), {n_embd}, 0);
+                        layer.attn_q_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_NORM, "weight", i), {n_embd_head_k}, 0);
+                        layer.attn_k_norm = create_tensor(tn(LLM_TENSOR_ATTN_K_NORM, "weight", i), {n_embd_head_k}, 0);
+
+                        layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, "weight", i), {n_embd}, 0);
+                        layer.ffn_gate = create_tensor(tn(LLM_TENSOR_FFN_GATE, "weight", i), {n_embd,   n_ff}, 0);
+                        layer.ffn_up   = create_tensor(tn(LLM_TENSOR_FFN_UP,   "weight", i), {n_embd,   n_ff}, 0);
+                        layer.ffn_down = create_tensor(tn(LLM_TENSOR_FFN_DOWN, "weight", i), {  n_ff, n_embd}, 0);
+                        layer.ffn_post_norm = create_tensor(tn(LLM_TENSOR_FFN_POST_NORM, "weight", i), {n_embd}, 0);
+                    }
+
+                    // vision encoder tensors (optional, for multimodal)
+                    {
+                        create_tensor(tn(LLM_TENSOR_V_PATCH_EMBD,     "weight"), {768, 768},     llama_model_loader::TENSOR_NOT_REQUIRED);
+                        create_tensor(tn(LLM_TENSOR_V_PATCH_EMBD_POS, "weight"), {2, 10240, 768}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                        create_tensor(tn(LLM_TENSOR_V_ENC_OUTPUT_PROJ, "weight"), {n_embd, 768},  llama_model_loader::TENSOR_NOT_REQUIRED);
+                        create_tensor(tn(LLM_TENSOR_PER_LAYER_TOKEN_EMBD, "weight"), {n_vocab, (int64_t)(n_layer * 256)}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                        create_tensor(tn(LLM_TENSOR_PER_LAYER_MODEL_PROJ, "weight"), {(int64_t)(n_layer * 256), n_embd}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                        create_tensor(tn(LLM_TENSOR_PER_LAYER_PROJ_NORM,  "weight"), {256}, llama_model_loader::TENSOR_NOT_REQUIRED);
+
+                        const int n_vlayer = 16;
+                        for (int i = 0; i < n_vlayer; ++i) {
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_NORM,      "weight", i), {768},      llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_Q,         "weight", i), {768, 768}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_K,         "weight", i), {768, 768}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_V,         "weight", i), {768, 768}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_OUT,       "weight", i), {768, 768}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_Q_NORM,    "weight", i), {64},       llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_K_NORM,    "weight", i), {64},       llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_ATTN_POST_NORM, "weight", i), {768},      llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_FFN_PRE_NORM,   "weight", i), {768},      llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_FFN_POST_NORM,  "weight", i), {768},      llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_FFN_GATE,       "weight", i), {768, 3072}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_FFN_DOWN,       "weight", i), {3072, 768}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            create_tensor(tn(LLM_TENSOR_V_ENC_FFN_UP,         "weight", i), {768, 3072}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                        }
+
+                        for (int i = 0; i < n_layer; ++i) {
+                            auto & layer = model.layers[i];
+                            layer.per_layer_scalar    = create_tensor(tn(LLM_TENSOR_PER_LAYER_SCALAR,     "weight", i), {1},         llama_model_loader::TENSOR_NOT_REQUIRED);
+                            layer.per_layer_inp_gate  = create_tensor(tn(LLM_TENSOR_PER_LAYER_INPUT_GATE, "weight", i), {256, n_embd}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            layer.per_layer_proj      = create_tensor(tn(LLM_TENSOR_PER_LAYER_PROJ,       "weight", i), {n_embd, 256}, llama_model_loader::TENSOR_NOT_REQUIRED);
+                            layer.per_layer_post_norm = create_tensor(tn(LLM_TENSOR_PER_LAYER_POST_NORM,  "weight", i), {n_embd},     llama_model_loader::TENSOR_NOT_REQUIRED);
+                        }
                     }
                 } break;
             case LLM_ARCH_STARCODER2:
@@ -17830,6 +17983,10 @@ static struct ggml_cgraph * llama_build_graph(
             {
                 result = llm.build_gemma2();
             } break;
+        case LLM_ARCH_GEMMA4:
+            {
+                result = llm.build_gemma2();
+            } break;
         case LLM_ARCH_STARCODER2:
             {
                 result = llm.build_starcoder2();
@@ -19988,9 +20145,11 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
         const std::string name = ggml_get_name(tensor);
 
         // TODO: avoid hardcoded tensor names - use the TN_* constants
-        if (name.find("attn_v.weight")   != std::string::npos ||
-            name.find("attn_qkv.weight") != std::string::npos ||
-            name.find("attn_kv_b.weight")!= std::string::npos) {
+        // skip vision encoder tensors (prefixed with "v.") for attention count
+        if ((name.find("attn_v.weight")   != std::string::npos ||
+             name.find("attn_qkv.weight") != std::string::npos ||
+             name.find("attn_kv_b.weight")!= std::string::npos) &&
+            name.compare(0, 2, "v.") != 0) {
             ++qs.n_attention_wv;
         } else if (name == LLM_TN(model.arch)(LLM_TENSOR_OUTPUT, "weight")) {
             qs.has_output = true;
@@ -20140,6 +20299,12 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
 
         // do not quantize relative position bias (T5)
         quantize &= name.find("attn_rel_b.weight") == std::string::npos;
+
+        // do not quantize vision encoder tensors
+        quantize &= name.compare(0, 2, "v.") != 0;
+
+        // do not quantize per-layer multimodal tensors (small)
+        quantize &= name.find("per_layer_") == std::string::npos;
 
         enum ggml_type new_type;
         void * new_data;
@@ -21218,6 +21383,7 @@ enum llama_rope_type llama_rope_type(const struct llama_model * model) {
         case LLM_ARCH_PHI3:
         case LLM_ARCH_GEMMA:
         case LLM_ARCH_GEMMA2:
+        case LLM_ARCH_GEMMA4:
         case LLM_ARCH_STARCODER2:
         case LLM_ARCH_OPENELM:
         case LLM_ARCH_GPTNEOX:

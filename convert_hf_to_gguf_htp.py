@@ -724,6 +724,15 @@ class Model:
         if chkhsh == "d4c8f286ea6b520b3d495c4455483cfa2302c0cfcd4be05d781b6a8a0a7cdaf1":
             # ref: https://huggingface.co/Infinigence/Megrez-3B-Instruct
             res = "megrez"
+        if chkhsh == "836a2830c7e39121160669fbea13c9037599b79b19f2e2beeb7a18a1216a464c":
+            # ref: https://huggingface.co/google/gemma-4-E4B-it
+            res = "default"
+        if chkhsh == "789696f5946cc0fc59371f39f6097cafed196b3acded6140432f26bbb1ae1669":
+            # ref: https://huggingface.co/google/gemma-4-E4B-it
+            res = "default"
+        if chkhsh == "965417e14157fd7a6a0b06b35020c004476eda4ca00e9f365ca638b78c888723":
+            # ref: https://huggingface.co/google/gemma-4-E4B-it (transformers>=5.x)
+            res = "default"
 
         if res is None:
             logger.warning("\n")
@@ -3246,6 +3255,129 @@ class Gemma2Model(Model):
 
         # ref: https://github.com/huggingface/transformers/blob/fc37f38915372c15992b540dfcbbe00a916d4fc6/src/transformers/models/gemma/modeling_gemma.py#L89
         if name.endswith("norm.weight"):
+            data_torch = data_torch + 1
+
+        return [(self.map_tensor_name(name), data_torch)]
+
+
+@Model.register("Gemma4ForConditionalGeneration")
+class Gemma4Model(Model):
+    model_arch = gguf.MODEL_ARCH.GEMMA4
+
+    def __init__(self, *args, **kwargs):
+        # Gemma4 is a multimodal model; text config is nested under "text_config"
+        # We need to merge text_config before calling super().__init__ because it reads hparams
+        hparams_override = kwargs.get("hparams")
+        if hparams_override is None:
+            dir_model = args[0] if args else kwargs["dir_model"]
+            hparams_override = Model.load_hparams(dir_model)
+        if "text_config" in hparams_override:
+            hparams_override = {**hparams_override, **hparams_override["text_config"]}
+        kwargs["hparams"] = hparams_override
+        super().__init__(*args, **kwargs)
+
+    def set_vocab(self):
+        # Gemma4's tokenizer_config.json has extra_special_tokens as a list,
+        # which causes issues with some transformers versions.
+        # Patch it temporarily for tokenizer loading.
+        import shutil
+        import tempfile
+
+        temp_dir = Path(tempfile.mkdtemp())
+        try:
+            # Copy tokenizer files to temp dir
+            for f in ["tokenizer.json", "tokenizer_config.json"]:
+                src = self.dir_model / f
+                if src.exists():
+                    shutil.copy2(src, temp_dir / f)
+
+            # Patch tokenizer_config.json to fix extra_special_tokens
+            tc_path = temp_dir / "tokenizer_config.json"
+            with open(tc_path, "r", encoding="utf-8") as f:
+                tc = json.load(f)
+            if isinstance(tc.get("extra_special_tokens"), list):
+                # Convert list to dict format expected by transformers
+                tc["extra_special_tokens"] = {tok: tok for tok in tc["extra_special_tokens"]}
+            with open(tc_path, "w", encoding="utf-8") as f:
+                json.dump(tc, f, ensure_ascii=False)
+
+            # Temporarily swap dir_model
+            orig_dir = self.dir_model
+            self.dir_model = temp_dir
+            self._set_vocab_gpt2()
+            self.dir_model = orig_dir
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        self.gguf_writer.add_add_space_prefix(False)
+
+    def set_gguf_parameters(self):
+        hparams = self.hparams
+        block_count = hparams["num_hidden_layers"]
+
+        self.gguf_writer.add_context_length(hparams["max_position_embeddings"])
+        self.gguf_writer.add_embedding_length(hparams["hidden_size"])
+        self.gguf_writer.add_block_count(block_count)
+        self.gguf_writer.add_feed_forward_length(hparams["intermediate_size"])
+        self.gguf_writer.add_head_count(hparams["num_attention_heads"])
+        self.gguf_writer.add_head_count_kv(hparams.get("num_key_value_heads", hparams["num_attention_heads"]))
+        self.gguf_writer.add_layer_norm_rms_eps(hparams["rms_norm_eps"])
+        self.gguf_writer.add_key_length(hparams["head_dim"])
+        self.gguf_writer.add_value_length(hparams["head_dim"])
+        self.gguf_writer.add_file_type(self.ftype)
+
+        if "final_logit_softcapping" in hparams:
+            self.gguf_writer.add_final_logit_softcapping(hparams["final_logit_softcapping"])
+        if "sliding_window" in hparams:
+            self.gguf_writer.add_sliding_window(hparams["sliding_window"])
+
+        # Use sliding attention rope_theta as default
+        rope_params = hparams.get("rope_parameters", {})
+        sliding_rope = rope_params.get("sliding_attention", {})
+        rope_theta = sliding_rope.get("rope_theta", 10000.0)
+        self.gguf_writer.add_rope_freq_base(rope_theta)
+
+        # Vision encoder parameters
+        vision_config = self.hparams.get("vision_config", {})
+        if vision_config:
+            arch = gguf.MODEL_ARCH_NAMES[self.model_arch]
+            self.gguf_writer.add_uint32(f"{arch}.vision.block_count", vision_config.get("num_hidden_layers", 16))
+            self.gguf_writer.add_uint32(f"{arch}.vision.embedding_length", vision_config.get("hidden_size", 768))
+            self.gguf_writer.add_uint32(f"{arch}.vision.head_count", vision_config.get("num_attention_heads", 12))
+            self.gguf_writer.add_uint32(f"{arch}.vision.feed_forward_length", vision_config.get("intermediate_size", 3072))
+            self.gguf_writer.add_uint32(f"{arch}.vision.patch_size", vision_config.get("patch_size", 16))
+            self.gguf_writer.add_uint32(f"{arch}.vision.image_tokens", self.hparams.get("vision_soft_tokens_per_image", 280))
+            self.gguf_writer.add_uint32(f"{arch}.vision.head_dim", vision_config.get("head_dim", 64))
+            self.gguf_writer.add_uint32(f"{arch}.vision.image_token_id", self.hparams.get("image_token_id", 258880))
+
+    def get_tensors(self) -> Iterator[tuple[str, Tensor]]:
+        for name, data in super().get_tensors():
+            # Skip audio tower tensors (not supported yet)
+            if name.startswith("model.audio_tower.") or \
+               name.startswith("model.embed_audio."):
+                continue
+
+            # Skip clipped linear min/max scalars (used for QAT, not needed for inference)
+            if name.endswith(".input_max") or name.endswith(".input_min") or \
+               name.endswith(".output_max") or name.endswith(".output_min"):
+                continue
+
+            # For clipped linear layers, unwrap .linear.weight → .weight
+            if ".linear.weight" in name:
+                name = name.replace(".linear.weight", ".weight")
+
+            yield name, data
+
+    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
+        del bid  # unused
+
+        # lm_head is not used when tie_word_embeddings is true
+        if name == "lm_head.weight":
+            logger.debug(f"Skipping get tensor {name!r} in safetensors so that convert can end normally.")
+            return []
+
+        # Gemma norm weights need +1 offset (only for language model norms, not vision)
+        if name.endswith("norm.weight") and not name.startswith("model.vision_tower."):
             data_torch = data_torch + 1
 
         return [(self.map_tensor_name(name), data_torch)]

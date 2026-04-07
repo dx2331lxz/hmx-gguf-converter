@@ -18,20 +18,7 @@ env/
 .idea/
 *.swp
 *.swo
+.DS_Store
 
-# Output files
-*.gguf
-!models/ggml-vocab-*.gguf
-
-# HuggingFace model weights: keep tokenizer assets, ignore large weight files
-Qwen*/**
-Llama*/**
-!llama-quantize/**
-Meta-Llama*/**
-mistral*/**
-!*/tokenizer.json
-!*/tokenizer_config.json
-!*/tokenizer.model
-!*/vocab.json
-!*/merges.txt
-!*/special_tokens_map.json
+# Local model directory
+gemma-4-E4B-it/
